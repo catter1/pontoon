@@ -470,9 +470,18 @@ def update_translated_resources(
     }
     add_tr: list[TranslatedResource] = []
     for resource in Resource.objects.current().filter(project=project).iterator():
-        _, locales = paths.target(resource.path)
-        for lc in locales:
-            locale = locale_map.get(lc, None)
+        if isinstance(paths, L10nConfigPaths):
+            resource_locales = locale_map.keys()
+        else:
+            _, resource_locales = paths.target(resource.path)
+
+        for lc in resource_locales:
+            if isinstance(paths, L10nConfigPaths):
+                target, locales = paths.target(resource.path, locale=lc)
+                if target is None or lc not in locales:
+                    continue
+
+            locale = locale_map.get(lc)
             if is_translated_resource(project, paths, resource, locale):
                 assert locale is not None
                 key = (resource.pk, locale.pk)

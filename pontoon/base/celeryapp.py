@@ -21,6 +21,7 @@ app = Celery("pontoon")
 # Configure Celery using the Django settings and autodiscover apps from
 # INSTALLED_APPS.
 app.config_from_object("django.conf:settings")
+app.conf.worker_enable_remote_control = False
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
 

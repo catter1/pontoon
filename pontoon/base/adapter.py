@@ -28,13 +28,20 @@ class PontoonSocialAdapter(DefaultSocialAccountAdapter):
         accounts. Because both of these providers use verified emails,
         we can automatically connect accounts with the same email.
         """
-        email = sociallogin.account.extra_data.get("email")
+        email = next(
+            (
+                address.email
+                for address in sociallogin.email_addresses
+                if address.primary and address.verified
+            ),
+            None,
+        )
 
         if not email:
             return
 
         try:
-            user = User.objects.get(email=email)
+            user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
             return
 
