@@ -116,7 +116,12 @@ def users_with_translations_counts(
                 "socialaccount_set",
                 queryset=SocialAccount.objects.filter(provider="fxa"),
                 to_attr="_prefetched_fxa_accounts",
-            )
+            ),
+            Prefetch(
+                "socialaccount_set",
+                queryset=SocialAccount.objects.filter(provider="github"),
+                to_attr="_prefetched_github_accounts",
+            ),
         )
     )
 

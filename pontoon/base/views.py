@@ -606,7 +606,12 @@ def get_translation_history(request):
                         "socialaccount_set",
                         queryset=SocialAccount.objects.filter(provider="fxa"),
                         to_attr="_prefetched_fxa_accounts",
-                    )
+                    ),
+                    Prefetch(
+                        "socialaccount_set",
+                        queryset=SocialAccount.objects.filter(provider="github"),
+                        to_attr="_prefetched_github_accounts",
+                    ),
                 ),
             ),
             "approved_user",
@@ -680,7 +685,12 @@ def get_team_comments(request):
                 "author__socialaccount_set",
                 queryset=SocialAccount.objects.filter(provider="fxa"),
                 to_attr="_prefetched_fxa_accounts",
-            )
+            ),
+            Prefetch(
+                "socialaccount_set",
+                queryset=SocialAccount.objects.filter(provider="github"),
+                to_attr="_prefetched_github_accounts",
+            ),
         )
         .order_by("timestamp")
     )
@@ -993,7 +1003,12 @@ def get_users(request):
                 "socialaccount_set",
                 queryset=SocialAccount.objects.filter(provider="fxa"),
                 to_attr="_prefetched_fxa_accounts",
-            )
+            ),
+            Prefetch(
+                "socialaccount_set",
+                queryset=SocialAccount.objects.filter(provider="github"),
+                to_attr="_prefetched_github_accounts",
+            ),
         )
         .annotate(
             in_locale=Count(

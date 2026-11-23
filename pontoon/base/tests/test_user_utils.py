@@ -10,6 +10,7 @@ from pontoon.base.models.user_profile import UserProfile
 from pontoon.base.user_utils import (
     avatar_url,
     fxa_avatar_url,
+    github_avatar_url,
     get_pretranslation_authors,
     get_system_user,
     get_user_by_username,
@@ -180,7 +181,7 @@ def test_user_banner(user_a, user_b, user_c, user_d, gt_user, locale_a, project_
 
 
 @pytest.mark.django_db
-def test_gravatar_url_returns_fxa_avatar_when_linked(user_a):
+def test_avatar_url_returns_fxa_avatar_when_linked(user_a):
     SocialAccount.objects.create(
         user=user_a,
         provider="fxa",
@@ -191,21 +192,42 @@ def test_gravatar_url_returns_fxa_avatar_when_linked(user_a):
 
 
 @pytest.mark.django_db
-def test_gravatar_url_falls_back_to_gravatar_when_no_fxa(user_a):
-    url = avatar_url(user_a)
-    assert "gravatar.com/avatar/" in url
+def test_avatar_url_returns_github_avatar_when_linked(user_a):
+    SocialAccount.objects.create(
+        user=user_a,
+        provider="github",
+        uid="1234",
+        extra_data={"avatar_url": "https://avatars.githubusercontent.com/u/1234"},
+    )
+    assert avatar_url(user_a) == "https://avatars.githubusercontent.com/u/1234"
 
 
 @pytest.mark.django_db
-def test_gravatar_url_falls_back_to_gravatar_when_fxa_has_no_avatar(user_a):
+def test_avatar_url_falls_back_to_generated_avatar_when_no_social_account(user_a):
+    url = avatar_url(user_a)
+    assert url.startswith("https://ui-avatars.com/api/")
+    assert "gravatar.com" not in url
+
+
+@pytest.mark.django_db
+def test_avatar_url_falls_back_to_generated_avatar_when_social_accounts_have_no_avatar(
+    user_a,
+):
     SocialAccount.objects.create(
         user=user_a,
         provider="fxa",
         uid="1234",
         extra_data={},
     )
+    SocialAccount.objects.create(
+        user=user_a,
+        provider="github",
+        uid="5678",
+        extra_data={},
+    )
     url = avatar_url(user_a)
-    assert "gravatar.com/avatar/" in url
+    assert url.startswith("https://ui-avatars.com/api/")
+    assert "gravatar.com" not in url
 
 
 @pytest.mark.django_db
@@ -264,3 +286,60 @@ def test_fxa_avatar_uses_prefetched_accounts(user_a):
 def test_fxa_avatar_uses_prefetched_accounts_when_empty(user_a):
     user_a._prefetched_fxa_accounts = []
     assert fxa_avatar_url(user_a) is None
+
+
+@pytest.mark.django_db
+def test_github_avatar_returns_none_for_unsaved_user():
+    user = User(username="unsaved", email="unsaved@example.com")
+    assert github_avatar_url(user) is None
+
+
+@pytest.mark.django_db
+def test_github_avatar_returns_url_from_db(user_a):
+    SocialAccount.objects.create(
+        user=user_a,
+        provider="github",
+        uid="1234",
+        extra_data={"avatar_url": "https://avatars.githubusercontent.com/u/1234"},
+    )
+    assert (
+        github_avatar_url(user_a)
+        == "https://avatars.githubusercontent.com/u/1234"
+    )
+
+
+@pytest.mark.django_db
+def test_github_avatar_returns_none_when_no_github_account(user_a):
+    assert github_avatar_url(user_a) is None
+
+
+@pytest.mark.django_db
+def test_github_avatar_returns_none_when_github_has_no_avatar(user_a):
+    SocialAccount.objects.create(
+        user=user_a,
+        provider="github",
+        uid="1234",
+        extra_data={},
+    )
+    assert github_avatar_url(user_a) is None
+
+
+@pytest.mark.django_db
+def test_github_avatar_uses_prefetched_accounts(user_a):
+    account = SocialAccount(
+        user=user_a,
+        provider="github",
+        uid="1234",
+        extra_data={"avatar_url": "https://avatars.githubusercontent.com/u/1234"},
+    )
+    user_a._prefetched_github_accounts = [account]
+    assert (
+        github_avatar_url(user_a)
+        == "https://avatars.githubusercontent.com/u/1234"
+    )
+
+
+@pytest.mark.django_db
+def test_github_avatar_uses_prefetched_accounts_when_empty(user_a):
+    user_a._prefetched_github_accounts = []
+    assert github_avatar_url(user_a) is None

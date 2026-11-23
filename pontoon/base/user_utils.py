@@ -1,7 +1,6 @@
 from collections.abc import Collection
-from hashlib import md5
 from typing import TYPE_CHECKING, Any
-from urllib.parse import quote, urlencode
+from urllib.parse import quote
 
 from dateutil.relativedelta import relativedelta
 from guardian.shortcuts import get_objects_for_user
@@ -96,19 +95,34 @@ def fxa_avatar_url(user: User) -> str | None:
     return fxa.extra_data.get("avatar") if fxa else None
 
 
-def avatar_url(user: User, size: int = 88) -> str:
+def github_avatar_url(user: User) -> str | None:
+    if user.pk is None:
+        return None
 
+    if hasattr(user, "_prefetched_github_accounts") and isinstance(
+        user._prefetched_github_accounts, list
+    ):
+        return (
+            user._prefetched_github_accounts[0].extra_data.get("avatar_url")
+            if user._prefetched_github_accounts
+            else None
+        )
+
+    github = user.socialaccount_set.filter(provider="github").first()
+    return github.extra_data.get("avatar_url") if github else None
+
+
+def avatar_url(user: User, size: int = 88) -> str:
     if fxa_avatar := fxa_avatar_url(user):
         return fxa_avatar
 
-    email = md5(user.email.lower().encode("utf-8")).hexdigest()
+    if github_avatar := github_avatar_url(user):
+        return github_avatar
+
     name = quote(user.display_name)
     background = "333941"
     color = "FFFFFF"
-    url = f"https://ui-avatars.com/api/{name}/{size}/{background}/{color}"
-    data = urlencode({"s": str(size), "d": url})
-
-    return f"//www.gravatar.com/avatar/{email}?{data}"
+    return f"https://ui-avatars.com/api/{name}/{size}/{background}/{color}"
 
 
 def profile_url(user: User) -> str:
